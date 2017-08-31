@@ -1,0 +1,69 @@
+---
+title: 'Section 0: Getting started'
+author: "Advanced Quantitative Methods (PLSC 504)"
+date: "Fall 2017"
+output: pdf_document
+header-includes: \usepackage{amsmath} \usepackage{float} \usepackage{bbm}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Please bring computer to all sections with `R` and RStudio installed. This is so that we can work through examples together. If this presents a problem for anyone please let me know asap!  
+
+\section{Step 1: R}
+
+Please go here \url{https://cran.r-project.org/} to download the latest version of `R` and install it on your machine. 
+
+\section{Step 2: RStudio}
+
+Please go here \url{https://www.rstudio.com/products/rstudio/download/} and download the \textbf{free} desktop version on RStudio on your machine. 
+
+\section{Step 3: Workflow} 
+
+I highly recommend using Markdown for all your homeworks. I promise it will make your life easier in the long run. It can generate PDFs and Word documents. You can also write in Latex syntax. But the Markdown syntax if very straightforward. The integration with RStudio is seamless. There are many many introductions to Markdown online. Here are two useful reference documents: 
+
+\begin{itemize}
+\item \url{https://www.rstudio.com/wp-content/uploads/2016/03/rmarkdown-cheatsheet-2.0.pdf}
+\item \url{https://www.rstudio.com/wp-content/uploads/2015/03/rmarkdown-reference.pdf}
+\end{itemize}
+
+This might seem intimidating, but getting started is super easy. Don't look at the references until you need them. Just dig in: 
+
+\begin{itemize}
+\item Open RStudio
+\item File > New File > R Markdown ... 
+\item Now you have created your first Markdown (.Rmd) file! Here is a concise and excellent introductory tutorial: \url{http://r4ds.had.co.nz/r-markdown.html} 
+\end{itemize}
+
+I created this document in Markdown using Latex syntax. So all the code chunks you see in the next section are things that you can also do very easily. Have a look at the .Rmd file as well so that you can see the code that generates this PDF. It could also serve as a template for your homeworks if you want. I like using Latex syntax in Markdown as a matter of habit. .Rmd files are very flexible, so you can use a combination of Markdown and Latex syntax. 
+
+Finally, be kind to your future self. Write good code. This makes your life easier, and the lives of people who have to read your code. And it also signals to other people who might read your code (while replicating your work perhaps) that you are careful and well organized. There are many style guides out there. I recommend this one: \url{http://adv-r.had.co.nz/Style.html}.
+
+\section{Step 4: Practice} 
+
+Simulate the following data in `R`. If these commands look unfamiliar, pass ?[thing] to the console to see what they do. For example `?rep` tells you what the `rep()` function does, what arguments it takes, and so on. 
+
+
+```{r}
+set.seed(123)
+X <- rep(1:100, 2)
+a <- 1
+b <- 0
+sigma2 <- X^1.3
+e <- rnorm(X, mean = 0, sd = sqrt(sigma2))
+Y <- a + b*X + e
+```
+
+\begin{enumerate}
+\item Plot the data. Notice anything unusual?
+\item Regress Y on X. Any problems?
+\end{enumerate}
+
+
+
+
+
+
+
