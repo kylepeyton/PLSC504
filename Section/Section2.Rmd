@@ -1,0 +1,469 @@
+---
+title: 'Section 2: identification and simulation'
+author: "Advanced Quantitative Methods (PLSC 504)"
+date: "Fall 2017"
+output: pdf_document
+header-includes: 
+- \usepackage{amsmath} 
+- \usepackage{float} 
+- \usepackage{bbm}
+- \usepackage{graphicx}
+- \newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The first part of this handout is a review problem that we will solve together in section. Please try and make some progress on your own before we meet. The second part of the handout reviews some basic distributions and how to use them in `R`. The remainder of the handout contains some notes on simulation with some illustrations in `R`. 
+
+\section{Review Problem}
+
+\noindent Suppose that $D_i$ and $Z_i$ are binary\footnote{This example is stolen from an old midterm exam question in Peter Aronow's PLSC 503 class}. Let
+
+\begin{itemize}
+\item $\mathbb{E}[Y_i|D_i=1,Z_i=1] = 1.00$ 
+\item $\text{Pr}[D_i=1,Z_i=1]=0.25$
+\item $\mathbb{E}[Y_i|D_i=0,Z_i=1]=0.50$
+\item $\text{Pr}[D_i=0,Z_i=1]=0.50$
+\item $\mathbb{E}[Y_i|D_i=0,Z_i=0]=0.50$
+\item $\text{Pr}[D_i=0,Z_i=0]=0.25$
+\item $\text{Pr}[D_i=1,Z_i=0]=0.00$
+\end{itemize}
+
+\noindent Assumptions: 
+
+\begin{enumerate}
+\item $Y_i=Y_i(1)D_i + Y_i(0)(1-D_i)$. 
+\item $D_i=D_i(1)Z_i+D_i(0)(1-Z_i)$
+\item $(Y_i(0),Y_i(1)) \indep D_i$
+\item $(Y_i(0),Y_i(1),D_i(1),D_i(0)) \indep Z_i$
+\item $\text{Supp}[Y_i]=[\alpha, \beta]$
+\end{enumerate}
+
+Define $\tau_i := Y_i(1)-Y_i(0)$. The following tool (Law of Iterated Expectations) will be necessary: 
+
+For r.v. $X$ and $Y$, if $f$ is a function of $X$ and $Y$, then $\mathbb{E}[f(X,Y)] = \mathbb{E}\left[\mathbb{E}[h(X,Y)|X]\right]$
+
+\textbf{Exercise:}
+
+\noindent (a) Under assumptions (1) and (5), compute a sharp upper bound for $\mathbb{E}[Y_i(1)|Z_i=0]$. 
+
+\noindent (b) Under assumption (1), compute $\mathbb{E}[Y_i(0)|Z_i=0]$. 
+
+\noindent (c) Under assumptions (1) and (3), compute $\mathbb{E}[Y_i(1)-Y_i(0)]$. 
+
+\noindent (d) Under assumptions (1), (2) and (4), compute $\text{Pr}[D_i(1) > D_i(0)]$, $\text{Pr}[D_i(1)=D_i(0)=1]$, $\text{Pr}[D_i(1)=D_i(0)=0]$, and $\text{Pr}[D_i(1) < D_i(0)]$. 
+
+\noindent (e) Under assumptions (1), (2) and (4), compute $\mathbb{E}[Y_i(1)-Y_i(0)|D_i(1)>D_i(0)]$. 
+
+
+\section{Distributions}
+
+First, let's explore some common distributions and see how to take draws from them in `R`. We will explore their probability density function (PDF), or probability mass function (PMF) in the discrete case, and their cumulative distribution function (CDF). You don't need to memorize any of these. They are all on Wikipedia.
+
+\subsection{Uniform distribution}
+
+A continuous random variable (r.v.) $U$ has a Uniform distribution on the interval $(a,b)$ if its PDF is,
+
+\[ f(x) = \left\{ \begin{array}{ll}
+         \frac{1}{b-a} & \mbox{if $a < x < b$}\\
+        0 & \mbox{otherwise}\end{array} \right. \] 
+
+We write this $U\sim\text{Unif}(a,b)$. The $\sim$ means ``is distributed as''. Its CDF is,
+
+
+\[ F(x) = \left\{ \begin{array}{ll}
+        0 & \mbox{if $x \leq a$}\\
+        \frac{x-a}{b-a} & \mbox{if $a < x < b$} \\
+        1 & \mbox{if $ x \geq b$} \\
+        \end{array} \right. \] 
+
+The standard Uniform, $\text{Unif}(0,1)$, is frequently used. The PDF is $f(x)=1$
+and the CDF is $F(x) = x$ for $0<x<1$. 
+
+Let's generate 10,000 draws from the standard uniform with the `runif()` function in `R` and plot the histogram,
+
+```{r}
+U <- runif(10000)
+hist(U, yaxt = "n", ylab = "", prob = TRUE, 
+     main = "Histogram of u with Unif(0,1) PDF")
+curve(dunif(x), lty = 2, lwd = 2, add = TRUE)
+```
+
+The standard Uniform distribution is incredibly useful for the following reason: we can use it to construct an r.v. with \textit{any} continuous distribution that we want. This is property is called "Universality of the Uniform"\footnote{See section 5.3 of Blitzstein and Hwang for more details} and it works like this. 
+
+\begin{enumerate}
+\item Let $U\sim\text{U}(0,1)$ and $X = F^{-1}(U)$. Then $X$ is an r.v. with CDF $F$.
+\item Let $X$ be an r.v. with CDF $F$. Then $F(X)\sim\text{Unif}(0,1)$. 
+\end{enumerate}
+
+\textbf{Applicaton} (from Blitzstein and Hwang p. 207):
+
+The Logistic CDF is $$ F(x) = \frac{e^x}{1+e^x} $$  for $x \in \mathbb{R}$. We can use $U\sim\text{Unif}(0,1)$ to generate a Logistic r.v., 
+
+First, we know that $F^{-1}(U)\sim\text{Logistic}$. Next, invert the CDF to get $F^{-1}$ by solving $u=F(x)$ for $x$ in terms of $u$:
+
+\[
+\begin{aligned}
+u  & = \frac{e^x}{1+e^x} \\
+u & = e^x - ue^x  =  e^x(1-u) \\
+e^x  & = \frac{u}{1-u} \\
+x & = \log\left(\frac{u}{1-u}\right)  \\
+F^{-1}(u) & = \log\left(\frac{u}{1-u}\right)
+\end{aligned}
+\]
+
+Then let $U = u$, 
+
+\[
+F^{-1}(U) = \log\left(\frac{U}{1-U}\right)
+\]
+
+Now $\log\left(\frac{U}{1-U}\right) \sim \text{Logistic}$. Why? 
+
+\[
+\begin{aligned}
+\text{Pr}\left(\log\left(\frac{U}{1-U}\right) \leq x \right) & = \text{Pr}\left(\frac{U}{1-U}\leq e^x\right) \\
+& = \text{Pr}\left(U\leq e^x(1-U)\right) \\
+& = \text{Pr}\left(U\leq \frac{e^x}{1+e^x} \right) \\
+& = \frac{e^x}{1+e^x}
+\end{aligned}
+\]
+
+We will illustrate this with simulation in the next section. 
+
+\subsection{Bernoulli distribution}
+
+A r.v., $X$ has a Bernoulli distribution with parameter $p$ if $\text{Pr}(X=1) = p$ and $\text{Pr}(X=0) = 1-p$ for $0 < p < 1$. You will often see this written as $X\sim\text{Bern}(p)$. 
+
+This particular distribution is very useful because **ANY** event has a Bernoulli r.v. associated with it, called the *indicator* r.v., which equals 1 if the event happens and 0 otherwise. This is simple yet extremely useful for a variety of computational problems. To formalize this, let $W$ be the r.v. which equals 1 if $W$ occurs and 0 otherwise. You will often see this as $I_W$ or $I(W)$ or $\mathbbm{1}\{W\}$. It follows from the previous definition of the Bernoulli that $\mathbbm{1}\{W\} \sim \text{Bern}(p)$ where $p=\text{Pr}(W)=\mathbb{E}[\mathbbm{1}\{W\}]$.
+
+\subsection{Binomial distribution}
+
+Suppose that $n$ independent Bernoulli trials are performed, each with probability $p$. Let $Y$ denote the number of ``successes'' (e.g. cases where we observe 1). $Y \sim \text{Bin}(n, p)$ means that $Y$ has a Binomial distribution with parameters $p$ and $n$, where $n$ is a positive integer and $0 < p < 1$. The PMF is,
+
+\[
+\text{Pr}(X=k) = \binom{n}{k}p^k(1-p)^{n-k}
+\]
+
+for $k=0,1,\dots,n$ and $\text{Pr}(X=k) = 0$ otherwise\footnote{Where does this come from? Well, $n$ independent Bernoulli trials is a sequence of successes and failures (kind of like academic life, right?). The probability of any specific sequence of $k$ successes and $n-k$ failures is $p^k(1-p)^{n-k}$. We have $\binom{n}{k}$ such sequences. Why? Well, we just need to select where the \textit{successes} are.}
+
+We can generate random draws from the Binomial in `R` with the function `rbinom()`. The function takes arguments `n` for the number of draws to simulate, `size` for the number of trials (zero or more), and `p` for the success probability. It returns a vector of length `n` that contains independent draws from the Binomial. For example, we can simulate 10 independent random draws from a Binomial with size 5 and probability of 0.5 with,
+
+```{r}
+rbinom(n = 10, size = 5, prob = 0.5)
+```
+Each element in the vector is the number of "successes" in 5 trials. Note that the Bernoulli is equivalent to a Binomial with $n=1$, i.e. $\text{Bin}(1,p)$. So the Bernoulli is a special case of the Binomial. There isn't a function to simulate Bernoulli's in `R` but we take advantage of this fact and just use `rbinom()`. For example, we can simulate a sequence of 10 independent Bernoulli trials, each with success probability $p=0.30$, in `R` via
+
+```{r}
+rbinom(n = 10, size = 1, prob = 0.3)
+```
+
+So if we want to simulate Bernoulli trials we just set `size` equal to 1. This is almost always what we want to do in practice. 
+
+\subsection{Standard Normal distribution}
+
+A continuous r.v. $Z$ has a standard Normal distribution if its PDF $\varphi$ is $$\varphi(z) = \frac{1}{\sqrt{2\pi}}e^{-z^2/2}$$ for $z\in\mathbb{R}$. This is typically written as $Z\sim\mathcal{N}(0,1)$ since it has mean 0 and variance 1. The standard Normal CDF $\Phi$ is, per usual, the integral of the PDF, e.g. $$ \phi(z) = \int_{-\infty}^{z}\varphi(t)dt =  \int_{-\infty}^{z} \frac{1}{\sqrt{2\pi}}e^{-t^2/2}dt$$ gives us the accumulated area under the PDF from $-\infty$ to $z$, which we might denote $F_Z(z) = \text{Pr}(Z\leq z)$. But the standard Normal is so important that it has its own special symbols, e.g. $\Phi(z) = \text{Pr}(Z\leq z)$. We leave it as an integral because there is no closed form solution. For example, what's the probability of seeing a value less than or equal to 0 in the standard Normal? This is the integral from $-\infty$ to 0. Luckily `R` can handle this for us with the `pnorm()` function,
+
+```{r}
+pnorm(0)
+```
+As expected, we get 0.5 (Why?). Suppose we want to work with the PDF to determine the probability of observing $z$ between -1 and 1 (remember the 68-95-99.7 rule?). We could write a function for this,
+
+```{r}
+normal_pdf <- function(z) {
+  1/sqrt(2*pi)*exp(-z^2/2)
+}
+```
+
+And then use the `integrate()` function in `R`,
+
+```{r}
+integrate(normal_pdf, -1, 1)
+```
+
+But we don't need to do this, because we have the `dnorm()` function, 
+
+```{r}
+integrate(dnorm, -1, 1)
+```
+
+The general \textbf{Normal Distribution}, with parameters $\mu$ and $\sigma^2$, has an important relationship to the standard Normal. If $Z\sim\mathcal{N}(0,1)$ then $$X = \mu + \sigma Z$$, which we write $X\sim\mathcal{N}(\mu,\sigma^2)$. If we start with the general Normal, we can also convert the other way or "standardize". The standardized verison of $X\sim\mathcal{N}(\mu,\sigma^2)$ is $$ \frac{X-\mu}{\sigma} \sim \mathcal{N}(0,1) $$ The Normal CDF is $$ F(x) = \Phi\left(\frac{x-\mu}{\sigma}\right)$$ Why? Because $$ F(x) = \text{Pr}(X\leq x) = \text{Pr}\left(\frac{X-\mu}{\sigma}\leq \frac{x-\mu}{\sigma}\right) = \Phi\left(\frac{x-\mu}{\sigma}\right)$$
+
+And the Normal PDF is $$ f(x)= \varphi\left(\frac{x-\mu}{\sigma}\right)\frac{1}{\sigma}$$ Why? Because\footnote{remember the chain rule? $D\{f(g(x))\}=f'(g(x))g'(x)$} $$ f(x) = \frac{d}{dx}\Phi\left(\frac{x-\mu}{\sigma}\right) = \varphi \left(\frac{x-\mu}{\sigma}\right)\frac{1}{\sigma} = \frac{1}{\sqrt{2\pi}\sigma}\exp\left(-\frac{(x-\mu)^2}{2\sigma^2}\right)$$
+
+Suppose we want to generate 10,000 random deviates from the Normal with $\mu=2, \ \sigma^2=4$.  We can do this in two ways. First, we could use the fact from above about the relationship between the standard Normal and the general Normal. Second, we can specify the mean and variance directly in `R` via the `rnorm()` function. 
+
+```{r}
+set.seed(123)
+
+## Method 1
+Z <- rnorm(10000)
+X1 <- 2 + sqrt(4)*Z
+
+## Method 2
+X2 <- rnorm(n = 10000, mean = 2, sd = sqrt(4))
+
+mean(X1)
+mean(X2)
+
+var(X1)
+var(X2)
+```
+
+We can convince ourselves that the mean and variance are the same with math, 
+
+\[
+\begin{aligned}
+\mathbb{E}[\mu + \sigma Z] & = \mathbb{E}[\mu] + \sigma\mathbb{E}[Z] = \mu \\
+\text{Var}\left(\mu + \sigma Z\right) & = \text{Var}(\sigma Z)= \sigma^2\text{Var}(Z) = \sigma^2
+\end{aligned}
+\]
+
+Suppose $X\sim\mathcal{N}(-2,4)$. What is $\text{Pr}\left(|X| < 4 \right)$? We can epxress this in terms of the standard Normal: $Z = \frac{X-(-2)}{2}$. Then,
+
+\[
+\text{Pr}\left(-4 < X < 4\right) = \text{Pr}\left(\frac{-4-(-2)}{2} < \frac{X-(-2)}{2} < \frac{4-(-2)}{2}\right) = \text{Pr}\left(-1 < Z < 3 \right) = \Phi(3) - \Phi(-1)
+\]
+
+Which is easy to calculate in `R` via the standard Normal CDF,
+
+```{r}
+pnorm(3) - pnorm(-1)
+```
+
+Which, as expected, gives the same result as,
+
+```{r}
+pnorm(4, mean = -2, sd = 2) - pnorm(-4, mean = -2, sd = 2)
+```
+
+\section{Generating random deviates with inverse transform}
+
+Almost all programming languages are capable of generating pseudo random samples from the uniform distribution. With some statistical magic (a technique called "inverse transform sampling", which relies on the "universality of the uniform"), we can convert the uniform random variables to \text{any} other desired r.v., given its cumulative distribution function. All we need is the ability to generate draws from the unifrom distribution. 
+
+Let $F_X$ denote the CDF for some arbitrary distribution that we want to sample from. Note that $F_{X}(x) = \text{Pr}(X \leq x) = u$. The inverse of the CDF, $F^{-1}_{X}$, takes $u$ as input and returns $x$. When the $u$'s are uniformly distributed then we can sample from any $F_{X}$ if we can write down $F^{-1}_{X}$. It is easy to sample from $u\sim \text{Unif}(0,1)$, so we just take the values of $u$ and feed them to $F^{-1}_{X}$ to produce the $x$'s since $F^{-1}_{X}(u)=x$. 
+
+Inversion sampling is the default procedure at work "behind the scenes" for many (all?) of the random number generators that come with base `R`, including the Normal. And we would never bother coding this method by hand to sample from a distribution like the Normal precisely because we can take advantage of `rnorm()`. However, this is potentially useful when we want to simulate from a distribution that doesn't live in base `R`, like the Laplace distribution example below. 
+
+\subsection{Illustration: Biased coin flip} 
+
+Suppose we are taking a statistics class and our TA asks us to simulate a coin tossing process where $p \neq 0.5$ is the probability of heads. Our TA is a sadist and says the only base `R` function we can use is `runif()`. Let $U \sim \text{Unif}(0,1)$. We can write the Bernoulli r.v. $X$ as, 
+
+\[ X = \left\{ \begin{array}{ll}
+         1 & \mbox{if $U < p$}\\
+        0 & \mbox{if $U \geq p$}\end{array} \right. \] 
+
+Let $H$ denote ``success'' -- the coin comes up heads. It follows that 
+
+\[
+\begin{aligned}
+\text{Pr}(H) = \text{Pr}(X=1) = \text{Pr}(U < p ) = p 
+\end{aligned}
+\]
+
+So $X\sim\text{Bern}(p)$. Suppose we want to simulate deviates for a biased coin with $p=0.4$. This is easy to do in `R`\footnote{note that \texttt{R} does not have a built in function called `rbern()` for generating random Bernoulli r.v.s; instead, we use the Binomial with $size=1$. This can be also be accomplished with the function `rbinom()`}. 
+
+```{r}
+set.seed(123)
+p <- 0.4 
+U <- runif(1, min = 0, max = 1)
+X <- as.numeric(U < p)
+```
+
+What's going on here? The support of $U$ is $[0,1]$. The function `runif()` returns a number from this interval. In this case $U=$``r U``. In essence, we divide the interval $[0,1]$ into two parts: one of length $p = 0.4$ and another of length $1-p=0.6$ in this example. The value of $X$, our r.v., is determined based on the realization of $U$, here ``r U``. Let's write a function for this,
+
+```{r}
+gen_bernoulli <- function(p, nsims){
+  X <- NULL
+  for(i in 1:nsims){
+    U <- runif(1, min = 0, max = 1)
+    X[i] <- as.numeric(U < p)
+  }
+  return(X)
+}
+```
+
+Now let's confirm it works by taking 10,000 draws from it with $p=0.4$ and confirming that we get `heads' 4 out of 10 times.
+
+```{r}
+set.seed(123)
+x <- gen_bernoulli(p = 0.4, nsims = 10000)
+table(x)/10000
+```
+
+\subsection{Illustration: Laplace distribution}
+
+The double exponential (Laplace) distribution
+
+\[
+f(x) = \frac{a}{2}\exp\{-a|x-b|\}
+\]
+
+where $a>0$ and $b$ is any finite real number. If we let $a = a^{-1}$ then the pdf is the standard representation of the Laplace,
+
+\[
+g(x)= \frac{1}{2a}\exp\left(-\frac{|x-b|}{a}\right)
+\]
+
+Which has cdf,
+
+\[ G(x) = \left\{ \begin{array}{ll}
+         \frac{1}{2}\exp\left(\frac{x-b}{a}\right) & \mbox{$x \in (-\infty,b]$};\\
+        1- \frac{1}{2}\exp\left(-\frac{x-b}{a}\right)& \mbox{$x \in[a,\infty)$}.\end{array} \right. \] 
+        
+Substituting $a=a^{-1}$ we have,        
+
+\[ F(x) = \left\{ \begin{array}{ll}
+         \frac{1}{2}\exp\left(a(x-b)\right) & \mbox{$x \in (-\infty,b]$};\\
+        1- \frac{1}{2}\exp\left(-a(x-b)\right)& \mbox{$x \in[b,\infty)$}.\end{array} \right. \] 
+
+Solving each piece of $U=F(X)$ for $X$ yields,
+
+\[
+\begin{aligned}
+U & = \frac{1}{2}\exp\left(a(X-b)\right)  \\
+\log(2U) & = a(X-b) \\ 
+X & =\frac{\log(2U)}{a}+b \\
+& \text{and} \dots \\ 
+\\
+U & = 1- \frac{1}{2}\exp\left(-a(x-b)\right) \\
+2(1-U) & = \exp\left(-a(x-b)\right) \\
+X & = b-\frac{1}{a}\left(\log\left(2(1-U)\right)\right) \\
+\end{aligned}
+\]
+        
+Therefore, for $a\in(0,\infty)$ and $b\in\mathbb{R}$
+
+\[ X = \left[b+\frac{1}{a}\log(2U)\right]\mathbbm{1}\left(U<\frac{1}{2}\right) + \left[b-\frac{1}{a}\log\left(2U\right)\right]\mathbbm{1}\left(U\geq\frac{1}{2}\right) \] 
+
+Has the double exponential (Laplace) distribution. The algorithm to generate a random draw is then,
+
+1) Generate $U\sim\text{Unif}(0,1)$
+2) Set $X=b+\frac{1}{a}\log(2U)$ if $U < \frac{1}{2}$. Else $X=b-\frac{1}{a}\log\left(2(1-U)\right)$. 
+
+First, I create some functions:
+
+```{r}
+genlaplace <- function(a, b, nsims){
+  X <- NULL
+  for(i in 1:nsims){
+    U <- runif(1)
+    if(U < 0.5){
+      X[i] <- (b + (1/a)*log(2*U))
+    } else{
+      X[i] <- (b - (1/a)*log(2*(1-U)))
+    }
+  }
+  return(X)
+}
+
+laplace_pdf <- function(a, b, x){
+  out <- NULL
+  for(i in seq_along(x)){
+    out[i] <- (a/2)*exp(-a*abs(x[i]-b))
+  }
+  return(out)
+}
+
+```
+
+Now I use the function `genlaplace()` to generate 10,000 deviates from the Laplace distribution with $a=1, \ b=0$ and plot them using a histogram with the true Laplace density (using the `laplace_pdf()` function I created above) overlaid as a red line: 
+
+```{r}
+
+set.seed(123)
+Y <- genlaplace(a=1, b = 0, nsims=10000)
+supp <- seq(min(Y), max(Y), 0.5)
+hist(Y, breaks = seq(min(Y), max(Y), length.out=100), probability = TRUE, 
+     col = "grey80", las = 1, xlim = c(-10, 10), 
+     ylim = c(0,0.5), main = "Laplace(a = 1, b = 0) generated from Uniform")
+lines(supp, laplace_pdf(x=supp, a=1, b=0), col = "red")
+
+```
+
+\section{More simulation applications}
+
+\subsection{Law of Large Numbers}
+
+Suppose we have i.i.d. $X_1, X_2, X_3, \dots$ with finite mean $\mu$ and finite variance $\sigma^2$. For all positive integers $n$, let
+
+\[
+\bar{X}_n = \frac{X_1+\dots+X_n}{n}
+\]
+
+denote the sample mean of $X_1$ through $X_n$. The sample mean is an r.v. with mean $\mu$ and variance $\sigma^2/n$. Convince yourself that this is true by calculating $\mathbb{E}[\bar{X}_n]$ and $\text{Var}(\bar{X}_n)$. 
+
+The law of large numbers (LLN) says that as $n$ grows, the sample mean converges to the true mean $\mu$. Formally, the (weak) LLN says: For all $\epsilon > 0$, $\text{Pr}\left(|\bar{X}_n-\mu| > \epsilon\right) \to 0$ as $n \to \infty$. The relevant concept here is "convergence in probability". Another way to write this is $\bar{X}_n \overset{p}{\to} \mathbb{E}[X]=\mu$ where $\overset{p}{\to}$ means "converges in probability". 
+
+We could prove the (weak) LLN analytically [Hint: use the Chebyshev Inequality] but we can also simulate it. Let's simulate tossing a fair coin 10000 times to illustrate how the LLN works. 
+
+```{r}
+set.seed(123)
+n <- 10000
+toss <- gen_bernoulli(p = 0.5, nsims = n)
+a <- numeric(n + 1)
+avg <- numeric(n)
+
+for(i in 2:n + 1) {
+  a[i] <- a[i-1] + toss[i-1]
+  avg[i-1] <- a[i]/(i-1)
+}
+
+plot(1:n, avg[1:n], type = "l", lwd = 2, ylab = "Proportion heads", xlab = "Toss #")
+```
+
+\subsection{Central Limit Theorem}
+
+The LLN tells us that as $n\to \infty$, $\bar{X}_n$ converges to the constant $\mu$ with probability 1. The central limit theorem (CLT) tells us what happens to its distribution along the way. The CLT states that for large $n$, the distribution of $\bar{X}_n$, after standardization, approaches the standard Normal distribution. Formally, for $\mathbb{E}[X] = \mu < \infty$ and $0 < \text{Var}(X) = \sigma^2 < \infty$,
+
+
+\[
+\sqrt{n}\left(\frac{\bar{X}_n-\mu}{\sigma}\right)\overset{d}{\to} \mathcal{N}(0,1)
+\]
+
+as $n\to\infty$. Where $\overset{d}{\to}$ means "converges in distribution". You can prove this if you want using moment generating functions, but it's hard. Instead, simulate it in `R`! Pick any distribution for $X$ that you like (except the Normal!) that satisfies the necessary regularity conditions for the mean and variance. 
+
+\textbf{Exercise}: Write a function called `sim_clt()` that takes arguments `X`, `r` and `n` where `X` is a vector of random deviates from your chosen distribution, `r` is the number of repititions (use atleast 10,000), and `n` is the number of samples in each sample set (use atleast 100). The output of this function should be a vector of length `r` that contains the sample means for each repitition. Your function should also standardize by subtracting $\mu$, the expected value of $\bar{X}_n$, and dividing by $\sigma/\sqrt{n}$, the standard deviation of $\bar{X}_n$. Store the result in a vector called `Z`. 
+
+```{r}
+## this function computes the r samples of the sample mean from the 
+## r*n original samples
+sim_clt <- function(X, r, n) {
+  sample_means <- rowMeans(matrix(X, nrow=r, ncol=n))
+  Z <- (sample_means - mean(X))/(sd(X)/sqrt(n))
+  return(Z)
+}
+```
+
+Now verify that it works! First try the standard uniform distribution,
+
+```{r}
+set.seed(123)
+r <- 10000
+n <- 200
+Z <- sim_clt(X = runif(r*n), r = r, n = n)
+mean(Z)
+sd(Z)
+
+supp <- seq(min(Z), max(Z), 0.05)
+hist(Z, probability = TRUE, col = "grey80", las = 1, ylim = c(0, 0.5),
+     main = "Histogram of z")
+lines(supp, dnorm(x=supp), col = "red")
+```
+
+We can also plot the empirical CDF and see if it looks like it should,
+
+```{r}
+plot(ecdf(Z))
+```
+
+Another way to check if this worked (besides visual checking of implications) is to use the Kolmogorov-Smirnov test implemented with the `ks.test()` function in `R`. The null hypothesis here is that $Z$ comes from a standard Normal. We can use this for a variety of distributions besides the standard Normal (see `?ks.test()` for details),
+
+```{r}
+ks.test(Z, "pnorm")
+```
+
+
+
