@@ -1,0 +1,50 @@
+---
+title: 'Section 5: More practice with assignment mechanisms'
+author: "Advanced Quantitative Methods (PLSC 504)"
+date: "Fall 2017"
+output: pdf_document
+header-includes: 
+- \usepackage{amsmath} 
+- \usepackage{float} 
+- \usepackage{bbm}
+- \usepackage{graphicx}
+- \newcommand{\indep}{\rotatebox[origin=c]{90}{$\models$}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+\section*{Example 1: A ``broken'' RCT?}
+
+\noindent Suppose you run a randomized experiment on a finite population of $N=3$ units\footnote{This example is based on a homework problem from Peter Aronow's Spring 2015 version of PLSC 503} and $\mathbf{Y}(1)=\mathbf{Y}(0)=(1,3,9)$ so that $\tau_i=0 \  \forall \ i$. Consider the following assignment mechanism, 
+
+\[
+\begin{aligned}
+ f(\mathbf{W}) = \left\{
+     \begin{array}{ll}
+       1/4 & : \mathbf{W} = (1,0,0) \\
+       1/4 & : \mathbf{W} = (0,1,0) \\
+       1/4 & : \mathbf{W} = (0,0,1) \\
+       1/4 & : \mathbf{W} = (0,1,1) \\
+       0 & : \text{otherwise}
+     \end{array}
+   \right.
+\end{aligned}
+\] 
+\noindent After randomly assigning units to treatment and control, you observe $\mathbf{Y}$ and $\mathbf{W}$. Let's compare two different estimators for the Average Treatment Effect (ATE).
+
+\subsection{Estimator A: Difference-in-Means}
+
+Let $$\hat{\tau}_{DM}=\frac{1}{m}\sum_{i=1}^{N} Y_iW_i - \frac{1}{N-m}\sum_{i=1}^NY_i(1-W_i)$$ denote the Difference-in-Means estimator for the ATE, where $m$ units are assigned treatment and $N-m$ units are assigned control. Is $\hat{\tau}_{DM}$ unbiased? What is $\text{Var}(\hat{\tau}_{DM})$? What is $\text{MSE}(\hat{\tau}_{DM})$?
+
+\subsection{Estimator B: Horvitz-Thompson}
+
+Let $$\hat{\tau}_{HT}=\frac{1}{N}\sum_{i=1}^{N} \frac{Y_iW_i}{p_i} - \frac{1}{N}\sum_{i=1}^N\frac{Y_i(1-W_i)}{(1-p_i)}$$ denote the Horvitz-Thompson estimator for the ATE, where $p_i$ is the marginal probability of treatment for unit $i$. Is $\hat{\tau}_{HT}$ unbiased? What is $\text{Var}(\hat{\tau}_{HT})$? What is $\text{MSE}(\hat{\tau}_{HT})$?
+
+\section{Example 2: an experiment with $N=1$?}
+
+In lecture Fredrik talked about a scenario where we had a single experimental unit who was assigned to treatment or control with equal probability. That is, we only get to see one of the unit's potential outcomes. Formalize the assignment mechanism and show that $\hat{\tau}_{HT}$ is unbiased. 
+
+
+
