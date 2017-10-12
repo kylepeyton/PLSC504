@@ -65,17 +65,11 @@ ggplot(gg_df, aes(x = Y0)) +
   stat_density(aes(x = Y1), colour = "red", fill = "red", alpha = 0.4) + 
   theme_tufte() + ylab("") + xlab("Support for democracy") +
   ggtitle("Distribution of (unobserved) potential outcomes:")
-
-#Y1_plot <- ggplot(gg_df, aes(x = Y1)) + 
-#  stat_density(colour = "red", fill = "red", alpha = 0.4) + 
-#  theme_bw() + ylab("")
-
-#plot_grid(Y0_plot, Y1_plot)
 ```
 
 
 \clearpage 
-\section{Causal inference in finite population}
+\section{Finite population causal inference}
 
 Suppose we have the budget to run an experiment on all 1000 students in the high school and our assignment mechanism is simple random assignment where $\text{Pr}(W_i=1)=1/2 \ \forall \ i$. The estimand we want to learn about here is the average treatment effect (ATE): $\frac{1}{N}\sum_i^N Y_i(1)-Y_i(0)$. This quantity is just a function of the (unobserved) potential outcomes. It is fixed. Nature has already decided what it is,
 
@@ -153,9 +147,9 @@ Note that in this simulation to asses bias, the potential outcomes are fixed ove
 
 
 \clearpage 
-\section{Causal inference in samples from a finite population}
+\section{Causal inference: sampling from a finite population}
 
-Now we will introduce sampling uncertainty into the design. Suppose that we only have the budget to treat 200 students. The setup is otherwise the same. 
+Now we will introduce sampling uncertainty into the design. Suppose that we only have the budget to run the experiment on 200 students. The setup is otherwise the same. 
 
 Under this new research design $S_i$ is 1 if the student is selected to be in the experimental sample, and 0 otherwise. $W_i$ is still the binary treatment assignment. $Y_i$ is still the observed outcome. $Y_i(0)$ and $Y_i(1)$ are still the unobserved potential outcomes. Under this design $(S_i,W_i,Y_i)$ are random; $Y_i(0)$ and $Y_i(1)$ are still fixed. 
 
@@ -180,7 +174,8 @@ Let's work through the logic in `R`. First, take a random sample of 200 students
 
 
 ```{r}
-# We only have a budget to treat 200 of students from the population. 
+# We only have a budget to run the experiment on 200. We take a
+# random sample from the population of 1000
 S <- as.numeric(1:N %in% sample(seq(1:N), 200))
 ```
 
@@ -202,8 +197,7 @@ Now the researcher steps onto the scene and applies treatment via simple random 
 # Do a random assignment
 W <- rbinom(n = sum(S), size = 1, prob = 0.5)
 
-# Again, we do not get to observe this process, we only see Y and W.
-#   What's random here? What's fixed?
+# Again, we do not get to observe this process. Why?
 Y <- Y1*S*W + Y0*S*(1-W)
 
 # Diff in means: our estimator for the SATE. 
@@ -214,14 +208,21 @@ sate_hat
 Uh oh. The difference in means isn't 10. This looks really bad! Is our estimator biased for the PATE? For the SATE? As before, bias is a property of an estimator. The difference in means is indeed unbiased for the PATE and the SATE in this setting,
 
 ```{r}
-# This is not equal to 10. Is the estimator biased? 
 nsims <- 100000
 sate_hat_sim <- rep(NA, nsims)
 
 for(i in 1:nsims) {
   
+  # Take a random sample from the school
+  S <- as.numeric(1:N %in% sample(seq(1:N), 200))
+  
+  # Do a simple random assignment
   W <- rbinom(n = sum(S), size = 1, prob = 0.5)
+  
+  # Reveal the potential outcomes
   Y <- Y1*S*W + Y0*S*(1-W)
+  
+  # Apply the difference in means estimator from before. 
   sate_hat_sim[i] <- sum(Y*W)/sum(W) - sum(Y*(1-W))/sum(1-W)
 
 }
@@ -277,4 +278,3 @@ es_plot <- ggplot(data.frame(error = sate - sate_hat_sim, sim = 1:nsims),
 
 es_plot
 ```
-
